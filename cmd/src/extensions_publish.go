@@ -100,29 +100,23 @@ Notes:
   $sourceMap: String,
   $force: Boolean!,
 ) {
-  extensionRegistry {
-    publishExtension(
-      extensionID: $extensionID,
-      manifest: $manifest,
-      bundle: $bundle,
-      sourceMap: $sourceMap,
-      force: $force,
-    ) {
-      extension {
-        extensionID
-        url
-      }
-    }
-  }
+	publishExtension(
+		extensionID: $extensionID,
+		manifest: $manifest,
+		bundle: $bundle,
+		sourceMap: $sourceMap,
+		force: $force,
+	  ) {
+		  extensionID
+		  url
+	  }
 }`
 
 		var result struct {
 			ExtensionRegistry struct {
 				PublishExtension struct {
-					Extension struct {
-						ExtensionID string
-						URL         string
-					}
+					ExtensionID string
+					URL         string
 				}
 			}
 		}
@@ -139,8 +133,8 @@ Notes:
 			done: func() error {
 				fmt.Println("Extension published!")
 				fmt.Println()
-				fmt.Printf("\tExtension ID: %s\n\n", result.ExtensionRegistry.PublishExtension.Extension.ExtensionID)
-				fmt.Printf("View, enable, and configure it at: %s\n", cfg.Endpoint+result.ExtensionRegistry.PublishExtension.Extension.URL)
+				fmt.Printf("\tExtension ID: %s\n\n", result.ExtensionRegistry.PublishExtension.ExtensionID)
+				fmt.Printf("View, enable, and configure it at: %s\n", cfg.Endpoint+result.ExtensionRegistry.PublishExtension.URL)
 				return nil
 			},
 			flags: apiFlags,

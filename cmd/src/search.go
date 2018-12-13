@@ -2,249 +2,219 @@ package main
 
 import (
 	"bytes"
-	"errors"
-	"flag"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
-
-	"github.com/mattn/go-isatty"
 )
 
 func init() {
-	usage := `
-Examples:
+	// flagSet := flag.NewFlagSet("search", flag.ExitOnError)
+	// var (
+	// 	jsonFlag        = flagSet.Bool("json", false, "Whether or not to output results as JSON")
+	// 	explainJSONFlag = flagSet.Bool("explain-json", false, "Explain the JSON output schema and exit.")
+	// 	apiFlags        = newAPIFlags(flagSet)
+	// 	lessFlag        = flagSet.Bool("less", true, "Pipe output to 'less -R' (only if stdout is terminal, and not json flag)")
+	// )
 
-  Perform a search and get results:
+	// handler := func(args []string) error {
+	// 	flagSet.Parse(args)
 
-    	$ src search 'repogroup:sample error'
+	// 	if *explainJSONFlag {
+	// 		fmt.Println(searchJSONExplanation)
+	// 		return nil
+	// 	}
 
-  Perform a search and get results as JSON:
+	// 	if flagSet.NArg() != 1 {
+	// 		return &usageError{errors.New("expected exactly one argument: the search query")}
+	// 	}
+	// 	queryString := flagSet.Arg(0)
 
-    	$ src search -json 'repogroup:sample error'
+	// 	// For pagination, pipe our own output to 'less -R'
+	// 	if *lessFlag && !*jsonFlag && isatty.IsTerminal(os.Stdout.Fd()) {
+	// 		cmdPath, err := os.Executable()
+	// 		if err != nil {
+	// 			return err
+	// 		}
 
-Other tips:
+	// 		srcCmd := exec.Command(cmdPath, append([]string{"search"}, args...)...)
 
-  Make 'type:diff' searches have colored diffs by installing https://colordiff.org
-    - Ubuntu/Debian: $ sudo apt-get install colordiff
-    - Mac OS:        $ brew install colordiff
-    - Windows:       $ npm install -g colordiff
+	// 		// Because we do not want the default "no color when piping" behavior to take place.
+	// 		srcCmd.Env = envSetDefault(os.Environ(), "COLOR", "t")
 
-  Disable color output by setting NO_COLOR=t (see https://no-color.org).
+	// 		srcStderr, err := srcCmd.StderrPipe()
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 		srcStdout, err := srcCmd.StdoutPipe()
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 		if err := srcCmd.Start(); err != nil {
+	// 			return err
+	// 		}
 
-  Force color output on (not on by default when piped to other programs) by setting COLOR=t
+	// 		lessCmd := exec.Command("less", "-R")
+	// 		lessCmd.Stdin = io.MultiReader(srcStdout, srcStderr)
+	// 		lessCmd.Stderr = os.Stderr
+	// 		lessCmd.Stdout = os.Stdout
+	// 		return lessCmd.Run()
+	// 	}
 
-  Query syntax: https://about.sourcegraph.com/docs/search/query-syntax/
-`
+	// 	query := `fragment FileMatchFields on FileMatch {
+	// 			repository {
+	// 				name
+	// 				url
+	// 			}
+	// 			file {
+	// 				name
+	// 				path
+	// 				url
+	// 				commit {
+	// 					oid
+	// 				}
+	// 			}
+	// 			lineMatches {
+	// 				preview
+	// 				lineNumber
+	// 				offsetAndLengths
+	// 				limitHit
+	// 			}
+	// 		}
 
-	flagSet := flag.NewFlagSet("search", flag.ExitOnError)
-	var (
-		jsonFlag        = flagSet.Bool("json", false, "Whether or not to output results as JSON")
-		explainJSONFlag = flagSet.Bool("explain-json", false, "Explain the JSON output schema and exit.")
-		apiFlags        = newAPIFlags(flagSet)
-		lessFlag        = flagSet.Bool("less", true, "Pipe output to 'less -R' (only if stdout is terminal, and not json flag)")
-	)
+	// 		fragment CommitSearchResultFields on CommitSearchResult {
+	// 			messagePreview {
+	// 				value
+	// 				highlights{
+	// 					line
+	// 					character
+	// 					length
+	// 				}
+	// 			}
+	// 			diffPreview {
+	// 				value
+	// 				highlights {
+	// 					line
+	// 					character
+	// 					length
+	// 				}
+	// 			}
+	// 			commit {
+	// 				repository {
+	// 					name
+	// 				}
+	// 				oid
+	// 				url
+	// 				subject
+	// 				author {
+	// 					date
+	// 					person {
+	// 						displayName
+	// 					}
+	// 				}
+	// 			}
+	// 		}
 
-	handler := func(args []string) error {
-		flagSet.Parse(args)
-
-		if *explainJSONFlag {
-			fmt.Println(searchJSONExplanation)
-			return nil
-		}
-
-		if flagSet.NArg() != 1 {
-			return &usageError{errors.New("expected exactly one argument: the search query")}
-		}
-		queryString := flagSet.Arg(0)
-
-		// For pagination, pipe our own output to 'less -R'
-		if *lessFlag && !*jsonFlag && isatty.IsTerminal(os.Stdout.Fd()) {
-			cmdPath, err := os.Executable()
-			if err != nil {
-				return err
-			}
-
-			srcCmd := exec.Command(cmdPath, append([]string{"search"}, args...)...)
-
-			// Because we do not want the default "no color when piping" behavior to take place.
-			srcCmd.Env = envSetDefault(os.Environ(), "COLOR", "t")
-
-			srcStderr, err := srcCmd.StderrPipe()
-			if err != nil {
-				return err
-			}
-			srcStdout, err := srcCmd.StdoutPipe()
-			if err != nil {
-				return err
-			}
-			if err := srcCmd.Start(); err != nil {
-				return err
-			}
-
-			lessCmd := exec.Command("less", "-R")
-			lessCmd.Stdin = io.MultiReader(srcStdout, srcStderr)
-			lessCmd.Stderr = os.Stderr
-			lessCmd.Stdout = os.Stdout
-			return lessCmd.Run()
-		}
-
-		query := `fragment FileMatchFields on FileMatch {
-				repository {
-					name
-					url
-				}
-				file {
-					name
-					path
-					url
-					commit {
-						oid
-					}
-				}
-				lineMatches {
-					preview
-					lineNumber
-					offsetAndLengths
-					limitHit
-				}
-			}
-
-			fragment CommitSearchResultFields on CommitSearchResult {
-				messagePreview {
-					value
-					highlights{
-						line
-						character
-						length
-					}
-				}
-				diffPreview {
-					value
-					highlights {
-						line
-						character
-						length
-					}
-				}
-				commit {
-					repository {
-						name
-					}
-					oid
-					url
-					subject
-					author {
-						date
-						person {
-							displayName
-						}
-					}
-				}
-			}
-
-		  fragment RepositoryFields on Repository {
-			name
-			url
-			externalURLs {
-			  serviceType
-			  url
-			}
-		  }
+	// 	  fragment RepositoryFields on Repository {
+	// 		name
+	// 		url
+	// 		externalURLs {
+	// 		  serviceType
+	// 		  url
+	// 		}
+	// 	  }
 		  
-		  query ($query: String!) {
-			search(query: $query) {
-			  results {
-				results{
-				  __typename
-				  ... on FileMatch {
-					...FileMatchFields
-				  }
-				  ... on CommitSearchResult {
-					...CommitSearchResultFields
-				  }
-				  ... on Repository {
-					...RepositoryFields
-				  }
-				}
-				limitHit
-				cloning {
-				  name
-				}
-				missing {
-				  name
-				}
-				timedout {
-				  name
-				}
-				resultCount
-				elapsedMilliseconds
-			  }
-			}
-		  }
-		`
+	// 	  query ($query: String!) {
+	// 		search(query: $query) {
+	// 		  results {
+	// 			results{
+	// 			  __typename
+	// 			  ... on FileMatch {
+	// 				...FileMatchFields
+	// 			  }
+	// 			  ... on CommitSearchResult {
+	// 				...CommitSearchResultFields
+	// 			  }
+	// 			  ... on Repository {
+	// 				...RepositoryFields
+	// 			  }
+	// 			}
+	// 			limitHit
+	// 			cloning {
+	// 			  name
+	// 			}
+	// 			missing {
+	// 			  name
+	// 			}
+	// 			timedout {
+	// 			  name
+	// 			}
+	// 			resultCount
+	// 			elapsedMilliseconds
+	// 		  }
+	// 		}
+	// 	  }
+	// 	`
 
-		var result struct {
-			Search struct {
-				Results searchResults
-			}
-		}
-		return (&apiRequest{
-			query: query,
-			vars: map[string]interface{}{
-				"query": nullString(queryString),
-			},
-			result: &result,
-			done: func() error {
-				improved := searchResultsImproved{
-					SourcegraphEndpoint: cfg.Endpoint,
-					Query:               queryString,
-					searchResults:       result.Search.Results,
-				}
+	// 	var result struct {
+	// 		Search struct {
+	// 			Results searchResults
+	// 		}
+	// 	}
+	// 	return (&apiRequest{
+	// 		query: query,
+	// 		vars: map[string]interface{}{
+	// 			"query": nullString(queryString),
+	// 		},
+	// 		result: &result,
+	// 		done: func() error {
+	// 			improved := searchResultsImproved{
+	// 				SourcegraphEndpoint: cfg.Endpoint,
+	// 				Query:               queryString,
+	// 				searchResults:       result.Search.Results,
+	// 			}
 
-				// HACK: temporary workaround for a bug where ElapsedMilliseconds is nonsensical
-				// when results == 0; Remove this when the bug is fixed and enough time has passed
-				// (internal tracking issue: https://github.com/sourcegraph/sourcegraph/issues/12625)
-				if len(improved.Results) == 0 {
-					improved.ElapsedMilliseconds = 0
-				}
+	// 			// HACK: temporary workaround for a bug where ElapsedMilliseconds is nonsensical
+	// 			// when results == 0; Remove this when the bug is fixed and enough time has passed
+	// 			// (internal tracking issue: https://github.com/sourcegraph/sourcegraph/issues/12625)
+	// 			if len(improved.Results) == 0 {
+	// 				improved.ElapsedMilliseconds = 0
+	// 			}
 
-				if *jsonFlag {
-					// Print the formatted JSON.
-					f, err := marshalIndent(improved)
-					if err != nil {
-						return err
-					}
-					fmt.Println(string(f))
-					return nil
-				}
+	// 			if *jsonFlag {
+	// 				// Print the formatted JSON.
+	// 				f, err := marshalIndent(improved)
+	// 				if err != nil {
+	// 					return err
+	// 				}
+	// 				fmt.Println(string(f))
+	// 				return nil
+	// 			}
 
-				tmpl, err := parseTemplate(searchResultsTemplate)
-				if err != nil {
-					return err
-				}
-				if err := execTemplate(tmpl, improved); err != nil {
-					return err
-				}
-				return nil
-			},
-			flags: apiFlags,
-		}).do()
-	}
+	// 			tmpl, err := parseTemplate(searchResultsTemplate)
+	// 			if err != nil {
+	// 				return err
+	// 			}
+	// 			if err := execTemplate(tmpl, improved); err != nil {
+	// 				return err
+	// 			}
+	// 			return nil
+	// 		},
+	// 		flags: apiFlags,
+	// 	}).do()
+	// }
 
 	// Register the command.
-	commands = append(commands, &command{
-		flagSet: flagSet,
-		handler: handler,
-		usageFunc: func() {
-			fmt.Fprintf(flag.CommandLine.Output(), "Usage of 'src %s':\n", flagSet.Name())
-			flagSet.PrintDefaults()
-			fmt.Println(usage)
-		},
-	})
+	// commands = append(commands, &command{
+	// 	flagSet: flagSet,
+	// 	handler: handler,
+	// 	usageFunc: func() {
+	// 		fmt.Fprintf(flag.CommandLine.Output(), "Usage of 'src %s':\n", flagSet.Name())
+	// 		flagSet.PrintDefaults()
+	// 		fmt.Println(usage)
+	// 	},
+	// })
 }
 
 // searchResults represents the data we get back from the GraphQL search request.

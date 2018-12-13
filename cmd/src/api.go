@@ -139,6 +139,9 @@ func curlCmd(endpoint, accessToken, query string, vars map[string]interface{}) (
 	}
 	s += fmt.Sprintf("   %s \\\n", shellquote.Join("-d", string(data)))
 	s += fmt.Sprintf("   %s", shellquote.Join(gqlURL(endpoint)))
+
+	fmt.Println("DATA: ", s)
+
 	return s, nil
 }
 
@@ -171,6 +174,7 @@ type apiRequest struct {
 // the request is finished a.done is invoked to handle the response (which is
 // stored in a.result).
 func (a *apiRequest) do() error {
+	fmt.Println("Executing request...", gqlURL(cfg.Endpoint));
 	if a.done != nil {
 		// Handle the get-curl flag now.
 		if *a.flags.getCurl {
@@ -199,10 +203,15 @@ func (a *apiRequest) do() error {
 	if err != nil {
 		return err
 	}
+
+	// Fix for work with apollo server
+	req.Header.Set("content-type", "application/json")
+	
 	if cfg.AccessToken != "" {
 		req.Header.Set("Authorization", "token "+cfg.AccessToken)
 	}
 	req.Body = ioutil.NopCloser(&buf)
+	fmt.Println("Body: ", req.Body);
 
 	// Perform the request.
 	resp, err := http.DefaultClient.Do(req)

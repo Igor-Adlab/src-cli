@@ -5,6 +5,7 @@ import (
 	"flag"
 	"io/ioutil"
 	"log"
+	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -65,6 +66,9 @@ type config struct {
 func readConfig() (*config, error) {
 	cfgPath := *configPath
 	userSpecified := *configPath != ""
+	
+	fmt.Println("Config: ", *configPath)
+
 	if !userSpecified {
 		user, err := user.Current()
 		if err != nil {
@@ -91,7 +95,7 @@ func readConfig() (*config, error) {
 		cfg.Endpoint = strings.TrimSuffix(*endpoint, "/")
 	}
 	if cfg.Endpoint == "" {
-		cfg.Endpoint = "https://sourcegraph.com"
+		cfg.Endpoint = "http://localhost:8085"
 	}
 	return &cfg, nil
 }
